@@ -1,5 +1,10 @@
+.DS_Store
+
 # Prerequisites
 *.d
+
+build/
+.mhscache
 
 # Object files
 *.o
@@ -53,3 +58,6 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# python
+__pycache__
