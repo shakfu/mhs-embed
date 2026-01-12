@@ -8,6 +8,15 @@ build/
 .mhscache
 .*_cache
 
+# generated files
+projects/example/CMakeLists.txt
+projects/example/example_ffi.c
+projects/example/example_ffi.h
+projects/example/example_ffi_wrappers.c
+projects/example/example_main.c
+projects/example/example_standalone_main.c
+projects/example/src/Example.hs
+
 # Object files
 *.o
 *.ko
