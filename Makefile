@@ -1,10 +1,10 @@
 # Makefile for mhs-embed
 # Build, clean, and reset targets for MicroHs embedding infrastructure
 
-.PHONY: all build clean reset help
+.PHONY: all build clean reset reset-hard help
 .PHONY: example example-standalone example-all
 .PHONY: repl run test
-.PHONY: new-project generate-example
+.PHONY: new-project generate-example regenerate-example
 
 # Default target
 all: build
@@ -35,17 +35,17 @@ repl: example ## Start the example REPL
 	@./build/example
 
 run: example-standalone ## Run the example Main.hs with standalone binary
-	@./build/example-standalone -r projects/example/examples/Main.hs
+	@./build/example-standalone -r projects/example/app/Main.hs
 
 test: example-standalone ## Test both REPL and standalone binaries
 	@echo "=== Testing REPL binary ==="
-	@./build/example -r projects/example/examples/Main.hs
+	@./build/example -r projects/example/app/Main.hs
 	@echo ""
 	@echo "=== Testing standalone binary ==="
-	@./build/example-standalone -r projects/example/examples/Main.hs
+	@./build/example-standalone -r projects/example/app/Main.hs
 	@echo ""
 	@echo "=== Testing standalone without MHSDIR ==="
-	@unset MHSDIR && ./build/example-standalone -r projects/example/examples/Main.hs
+	@unset MHSDIR && ./build/example-standalone -r projects/example/app/Main.hs
 	@echo ""
 	@echo "All tests passed!"
 
@@ -70,18 +70,24 @@ clean-cache: ## Remove MicroHs cache
 # Reset targets
 # ============================================
 
-reset: ## Full reset: remove build and example project
-	@rm -rf build
-	@rm -rf projects/example
+reset: clean ## Full reset: remove build, cache, and generated example
+	@rm -f .mhscache
+	@rm -f projects/example/src/Example.hs
+	@rm -f projects/example/CMakeLists.txt
+	@rm -f projects/example/example_ffi.c
+	@rm -f projects/example/example_ffi.h
+	@rm -f projects/example/example_ffi_wrappers.c
+	@rm -f projects/example/example_main.c
+	@rm -f projects/example/example_standalone_main.c
 	@echo "Reset complete. Run 'make generate-example' then 'make build'."
 
-reset-example: ## Remove example project only (keeps build dir)
+reset-hard: clean-cache clean ## Full reset including MicroHs cache
+
+regenerate-example: ## Remove and regenerate example project from template
 	@rm -rf projects/example
 	@rm -rf build/projects/example
 	@rm -f build/example build/example-standalone
-	@echo "Example removed. Run 'make generate-example' then 'make build'."
-
-reset-hard: clean-cache reset ## Full reset including MicroHs cache
+	@./mhs-embed/scripts/mhs-init-project.py example
 
 # ============================================
 # Generate targets
@@ -143,7 +149,8 @@ help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
 	@echo ""
 	@echo "Examples:"
-	@echo "  make build                    # Build all variants"
-	@echo "  make test                     # Run tests"
-	@echo "  make reset && make generate-example  # Reset and regenerate"
-	@echo "  make new-project NAME=foo     # Create new project"
+	@echo "  make build                 # Build all variants"
+	@echo "  make test                  # Run tests"
+	@echo "  make reset                 # Clean build artifacts"
+	@echo "  make regenerate-example    # Regenerate example from template"
+	@echo "  make new-project NAME=foo  # Create new project"

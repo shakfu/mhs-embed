@@ -1,6 +1,6 @@
 -- | Example program using Example
 --
--- Run with: example -r examples/Main.hs
+-- Run with: example -r app/Main.hs
 
 module Main where
 

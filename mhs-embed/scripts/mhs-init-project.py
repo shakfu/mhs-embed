@@ -18,8 +18,10 @@ Generated files:
         <project>_ffi_wrappers.c - MicroHs FFI wrappers
         <project>_main.c         - REPL entry point
         <project>_standalone_main.c - Standalone entry point
-        lib/
+        src/
             <Project>.hs         - Main Haskell module with FFI bindings
+        app/
+            Main.hs              - Example application
 """
 
 import argparse
@@ -403,9 +405,9 @@ static int find_mhsdir(char *buf, size_t size, const char *exe_dir) {{
 
 static int find_project_lib(char *buf, size_t size, const char *exe_dir) {{
     const char *candidates[] = {{
-        "../projects/{project_name}/lib",
-        "../share/{project_name}/lib",
-        "../lib/{project_name}/lib",
+        "../projects/{project_name}/src",
+        "../share/{project_name}/src",
+        "../lib/{project_name}/src",
         NULL
     }};
 
@@ -593,11 +595,13 @@ int main(int argc, char **argv) {{
     /* TODO: Add linker flags for your libraries when linking_libs is true */
 #ifdef VFS_USE_PKG
     #define PKG_EXTRA_ARGS 3
+    #define SRC_EXTRA_ARGS 0
 #else
     #define PKG_EXTRA_ARGS 0
+    #define SRC_EXTRA_ARGS 1  /* -i/mhs-embedded/src for finding project modules */
 #endif
 
-    int extra_args = 1 + PKG_EXTRA_ARGS;
+    int extra_args = 1 + PKG_EXTRA_ARGS + SRC_EXTRA_ARGS;
     int new_argc = argc - arg_offset + extra_args;
     char **new_argv = malloc((new_argc + 1) * sizeof(char *));
 
@@ -615,6 +619,8 @@ int main(int argc, char **argv) {{
     new_argv[j++] = "-a/mhs-embedded";
     new_argv[j++] = "-pbase";
     new_argv[j++] = "-p{project_name}";
+#else
+    new_argv[j++] = "-i/mhs-embedded/src";
 #endif
 
     /* TODO: Add -optl flags here if linking_libs && you have libraries */
@@ -723,7 +729,7 @@ def generate_example_main(project_name: str) -> str:
     camel = to_camel_case(project_name)
     return f'''-- | Example program using {camel}
 --
--- Run with: {project_name} -r examples/Main.hs
+-- Run with: {project_name} -r app/Main.hs
 
 module Main where
 
@@ -771,7 +777,7 @@ def generate_cmake(project_name: str) -> str:
 set(MHS_DIR ${{CMAKE_SOURCE_DIR}}/thirdparty/MicroHs)
 set(MHS_RUNTIME ${{MHS_DIR}}/src/runtime)
 set(MHS_LIB ${{MHS_DIR}}/lib)
-set({upper}_LIB_DIR ${{CMAKE_CURRENT_SOURCE_DIR}}/lib)
+set({upper}_SRC_DIR ${{CMAKE_CURRENT_SOURCE_DIR}}/src)
 set(MHS_EMBED_DIR ${{CMAKE_SOURCE_DIR}}/mhs-embed)
 
 if(WIN32)
@@ -904,7 +910,7 @@ add_custom_command(
     COMMAND ${{MHS_EMBED}}
         ${{EMBEDDED_HEADER}}
         ${{MHS_LIB}}
-        ${{CMAKE_CURRENT_SOURCE_DIR}}/lib
+        ${{CMAKE_CURRENT_SOURCE_DIR}}/src
         --no-compress
         --runtime ${{MHS_RUNTIME}}
         --header ${{CMAKE_CURRENT_SOURCE_DIR}}/{project_name}_ffi.h
@@ -953,14 +959,14 @@ install(TARGETS {project_name}
     RUNTIME DESTINATION bin
 )
 
-install(DIRECTORY ${{CMAKE_CURRENT_SOURCE_DIR}}/lib/
-    DESTINATION share/{project_name}/lib
+install(DIRECTORY ${{CMAKE_CURRENT_SOURCE_DIR}}/src/
+    DESTINATION share/{project_name}/src
     FILES_MATCHING PATTERN "*.hs"
 )
 '''
 
 
-def create_project(project_name: str, output_dir: Path, no_cmake: bool = False) -> None:
+def create_project(project_name: str, output_dir: Path, no_cmake: bool = False, force: bool = False) -> None:
     """Create all project files."""
 
     # Validate project name
@@ -976,12 +982,12 @@ def create_project(project_name: str, output_dir: Path, no_cmake: bool = False) 
 
     camel = to_camel_case(project_name)
 
-    # Create directories
+    # Create directories (Haskell-style: src/ for library, app/ for executables)
     output_dir.mkdir(parents=True, exist_ok=True)
-    lib_dir = output_dir / "lib"
-    lib_dir.mkdir(exist_ok=True)
-    examples_dir = output_dir / "examples"
-    examples_dir.mkdir(exist_ok=True)
+    src_dir = output_dir / "src"
+    src_dir.mkdir(exist_ok=True)
+    app_dir = output_dir / "app"
+    app_dir.mkdir(exist_ok=True)
 
     # Generate files
     files = [
@@ -990,22 +996,29 @@ def create_project(project_name: str, output_dir: Path, no_cmake: bool = False) 
         (output_dir / f"{project_name}_ffi_wrappers.c", generate_ffi_wrappers(project_name)),
         (output_dir / f"{project_name}_main.c", generate_repl_main(project_name)),
         (output_dir / f"{project_name}_standalone_main.c", generate_standalone_main(project_name)),
-        (lib_dir / f"{camel}.hs", generate_haskell_module(project_name)),
-        (examples_dir / "Main.hs", generate_example_main(project_name)),
+        (src_dir / f"{camel}.hs", generate_haskell_module(project_name)),
     ]
 
     if not no_cmake:
         files.append((output_dir / "CMakeLists.txt", generate_cmake(project_name)))
 
+    # app/Main.hs is only generated if it doesn't exist or --force is used
+    app_main = app_dir / "Main.hs"
+    if force or not app_main.exists():
+        files.append((app_main, generate_example_main(project_name)))
+
     for path, content in files:
         path.write_text(content)
         print(f"  Created: {path}")
+
+    if not force and app_main.exists() and (app_main, generate_example_main(project_name)) not in files:
+        print(f"  Skipped: {app_main} (already exists, use --force to overwrite)")
 
     print(f"\nProject '{project_name}' created in {output_dir}")
     print(f"\nNext steps:")
     print(f"  1. Edit {project_name}_ffi.h and {project_name}_ffi.c with your C API")
     print(f"  2. Update {project_name}_ffi_wrappers.c to match your API")
-    print(f"  3. Update lib/{camel}.hs with Haskell bindings")
+    print(f"  3. Update src/{camel}.hs with Haskell bindings")
     print(f"  4. Add project to main CMakeLists.txt: add_subdirectory(projects/{project_name})")
     print(f"  5. Build: cmake -B build && cmake --build build")
     print(f"  6. Run: ./build/{project_name}")
@@ -1040,22 +1053,28 @@ Examples:
         help="Don't generate CMakeLists.txt"
     )
 
+    parser.add_argument(
+        "--force", "-f",
+        action="store_true",
+        help="Overwrite app/Main.hs even if it exists"
+    )
+
     args = parser.parse_args()
 
     # Determine output directory
     if args.output_dir:
         output_dir = args.output_dir
     else:
-        # Find project root (look for CMakeLists.txt or .git)
+        # Find project root (scripts are at mhs-embed/scripts/, so go up two levels)
         script_dir = Path(__file__).parent
-        project_root = script_dir.parent
+        project_root = script_dir.parent.parent
         output_dir = project_root / "projects" / args.project_name
 
     print(f"Initializing MicroHs project: {args.project_name}")
     print(f"Output directory: {output_dir}")
     print()
 
-    create_project(args.project_name, output_dir, args.no_cmake)
+    create_project(args.project_name, output_dir, args.no_cmake, args.force)
 
 
 if __name__ == "__main__":

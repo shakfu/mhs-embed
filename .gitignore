@@ -3,8 +3,10 @@
 # Prerequisites
 *.d
 
+# project specific
 build/
 .mhscache
+.*_cache
 
 # Object files
 *.o
