@@ -106,7 +106,7 @@ function(mhs_embed_sources)
     cmake_parse_arguments(ARG
         "NO_COMPRESS;PKG_MODE"
         "OUTPUT;EMBED_TOOL;RUNTIME"
-        "LIBDIRS;LIBS;HEADERS;PKGS;TXT_DIRS;MUSIC_MODULES"
+        "LIBDIRS;LIBS;HEADERS;PKGS;TXT_DIRS;APP_MODULES"
         ${ARGN}
     )
 
@@ -154,8 +154,8 @@ function(mhs_embed_sources)
         list(APPEND EMBED_ARGS --txt-dir ${TXT_DIR})
     endforeach()
 
-    foreach(MUSIC_MOD ${ARG_MUSIC_MODULES})
-        list(APPEND EMBED_ARGS --music-modules ${MUSIC_MOD})
+    foreach(APP_MOD ${ARG_APP_MODULES})
+        list(APPEND EMBED_ARGS --app-modules ${APP_MOD})
     endforeach()
 
     # Compression

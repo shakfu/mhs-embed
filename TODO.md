@@ -2,11 +2,13 @@
 
 ## Build Variants
 
-- [ ] Add support for building .pkg-based standalone binaries
-  - Precompile Haskell sources to .pkg files using `mhs -C`
-  - Embed .pkg files instead of .hs sources for faster startup (~0.5s vs ~19s)
-  - Add `-pkg` and `-pkg-zstd` CMake targets
-  - Update init script to generate CMake rules for pkg variants
+- [x] Add support for building .pkg-based standalone binaries
+  - [x] Precompile Haskell sources to .pkg files using `mhs -P`
+  - [x] Embed .pkg files instead of .hs sources
+  - [x] Add `-pkg` and `-pkg-zstd` CMake targets
+  - [x] Update init script to generate CMake rules for pkg variants
+  - [x] Fixed: pkg variants now work (added .mhscache clearing to ensure fresh builds)
+  - See PKG_IMPL.md for implementation details
 
 ## Testing
 

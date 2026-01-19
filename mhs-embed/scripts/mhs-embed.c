@@ -20,7 +20,7 @@
  *   --pkg-mode              Output in pkg format with file types
  *   --pkg <vfs>=<file>      Embed a .pkg file
  *   --txt-dir <dir>         Collect .txt module mapping files from <dir>
- *   --music-modules <p:m1,m2> Generate synthetic .txt for music modules
+ *   --app-modules <p:m1,m2>   Generate synthetic .txt for app modules
  *
  * Compile:
  *   cc -O2 -o mhs-embed mhs-embed.c \
@@ -357,11 +357,11 @@ static int add_pkg_file(const char* spec) {
     return add_file_with_type(vfs_path, file_path, FILE_TYPE_PKG);
 }
 
-/* Parse music-modules spec and add synthetic .txt files */
-static int add_music_modules(const char* spec) {
+/* Parse app-modules spec and add synthetic .txt files */
+static int add_app_modules(const char* spec) {
     char* colon = strchr(spec, ':');
     if (!colon) {
-        fprintf(stderr, "Error: --music-modules requires format pkg_name:mod1,mod2,...\n");
+        fprintf(stderr, "Error: --app-modules requires format pkg_name:mod1,mod2,...\n");
         return -1;
     }
 
@@ -1068,7 +1068,7 @@ static void print_usage(const char* prog) {
     printf("  --pkg-mode            Output in pkg format with file types\n");
     printf("  --pkg <vfs>=<file>    Embed a .pkg file (repeatable)\n");
     printf("  --txt-dir <dir>       Collect .txt module mapping files\n");
-    printf("  --music-modules <spec> Add synthetic .txt (pkg:mod1,mod2,...)\n");
+    printf("  --app-modules <spec>  Add synthetic .txt (pkg:mod1,mod2,...)\n");
     printf("\nExamples:\n");
     printf("  # Source mode with compression (default)\n");
     printf("  %s mhs_embedded_zstd.h lib/ --runtime src/runtime/\n\n", prog);
@@ -1098,8 +1098,8 @@ int main(int argc, char** argv) {
     const char* lib_files[64];
     const char* header_files[64];
     const char* pkg_files[64];
-    const char* music_modules[64];
-    int lib_count = 0, header_count = 0, pkg_count = 0, music_count = 0;
+    const char* app_modules[64];
+    int lib_count = 0, header_count = 0, pkg_count = 0, app_count = 0;
 
     /* Parse arguments */
     for (int i = 2; i < argc; i++) {
@@ -1167,16 +1167,16 @@ int main(int argc, char** argv) {
                 return 1;
             }
             txt_dir = argv[++i];
-        } else if (strcmp(argv[i], "--music-modules") == 0) {
+        } else if (strcmp(argv[i], "--app-modules") == 0) {
             if (i + 1 >= argc) {
-                fprintf(stderr, "Error: --music-modules requires an argument\n");
+                fprintf(stderr, "Error: --app-modules requires an argument\n");
                 return 1;
             }
-            if (music_count >= 64) {
-                fprintf(stderr, "Error: Too many --music-modules arguments\n");
+            if (app_count >= 64) {
+                fprintf(stderr, "Error: Too many --app-modules arguments\n");
                 return 1;
             }
-            music_modules[music_count++] = argv[++i];
+            app_modules[app_count++] = argv[++i];
         } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
             print_usage(argv[0]);
             return 0;
@@ -1220,10 +1220,10 @@ int main(int argc, char** argv) {
         collect_txt_files(txt_dir);
     }
 
-    if (music_count > 0) {
-        printf("Adding synthetic .txt for music modules:\n");
-        for (int i = 0; i < music_count; i++) {
-            add_music_modules(music_modules[i]);
+    if (app_count > 0) {
+        printf("Adding synthetic .txt for app modules:\n");
+        for (int i = 0; i < app_count; i++) {
+            add_app_modules(app_modules[i]);
         }
     }
 
